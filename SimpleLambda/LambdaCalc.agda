@@ -11,10 +11,20 @@ open import Function using (_∘_; _$_)
 -- open import Data.Product
 
 
+data Kind : Set where
+  Star : Kind
+  B    : Kind
+
+data Type : B where 
+  Bool : Type 
+  Int  : Type 
+  𝛼
+
 infixr 30 _⇒_
 data Type : Set where
   nat : Type
   _⇒_ : Type → Type → Type
+
 
 infixl 80 _∙_
 data Syntax : Set where
