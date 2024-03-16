@@ -1,4 +1,4 @@
-module LambdaRF where
+module Syntax where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤?_; _≥_)
 open import Data.Vec using (Vec; []; _∷_; lookup)
@@ -11,7 +11,7 @@ data Kind : Set where
 data BaseType : Set where 
   Bool : BaseType 
   Int  : BaseType
---  𝛼    : Kind -> BaseType
+  α    : BaseType
 
 -- forward decleration to make Agda happy... 
 data Syntax : Set 
