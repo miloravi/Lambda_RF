@@ -15,10 +15,9 @@ data Kind : Set where
   Star : Kind
   B    : Kind
 
-data Type : B where 
-  Bool : Type 
-  Int  : Type 
-  𝛼
+-- data Type : B where 
+--   Bool : Type 
+--   Int  : Type 
 
 infixr 30 _⇒_
 data Type : Set where
