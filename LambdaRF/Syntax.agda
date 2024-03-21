@@ -1,6 +1,8 @@
 module Syntax where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤?_; _≥_)
+open import Data.Fin using (Fin; zero; suc; toℕ)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.Vec using (Vec; []; _∷_; lookup)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
@@ -49,7 +51,7 @@ Ctx = Vec (Kind ⊎ Type)
 --   kCtx : Vec Kind
 
 data Term {n} (Γ : Ctx n) : Type → Set where
-  Var   : ℕ → Term Γ (Lift Int)
+  Var   : ∀ {t} (v : Fin n) → inj₂ t ≡ lookup Γ v → Term Γ t
   Lam   : forall {a b} → Term ((inj₂ a) ∷ Γ) b → Term Γ (a ⇒ b)
   App   : forall {a b} → Term Γ (a ⇒ b) → Term Γ a → Term Γ b
   Let   : forall {a b} → Term Γ a → Term (inj₂ a ∷ Γ) b → Term Γ b
