@@ -8,22 +8,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Relation.Nullary using (Dec; yes; no)
 open import Function using (_∘_; _$_)
 
--- open import Data.Product
-
-
-data Kind : Set where
-  Star : Kind
-  B    : Kind
-
--- data Type : B where 
---   Bool : Type 
---   Int  : Type 
 
 infixr 30 _⇒_
 data Type : Set where
   nat : Type
   _⇒_ : Type → Type → Type
-
 
 infixl 80 _∙_
 data Syntax : Set where
@@ -44,8 +33,8 @@ data Term {n} (Γ : Ctx n) : Type → Set where
   lam  : ∀ {a b} → Term (a ∷ Γ) b → Term Γ (a ⇒ b) -- b moet implicit
 
 -- Closed terms
--- Closed : Type → Set
--- Closed = Term []
+Closed : Type → Set
+Closed = Term []
 
 erase : ∀ {n} {Γ : Ctx n} {τ} → Term Γ τ → Syntax
 erase (var v _) = var (toℕ v)
@@ -99,3 +88,45 @@ check Γ (f ∙ a) | _ | _   = nay
 check Γ (lam σ t) with check (σ ∷ Γ) t 
 ... | yay τ x            = yay (σ ⇒ τ) (lam x)    
 ... | nay                = nay
+
+
+⟦_⟧ : Type → Set
+⟦ nat   ⟧ = ℕ
+⟦ σ ⇒ τ ⟧ = ⟦ σ ⟧ → ⟦ τ ⟧
+
+infixr 5 _∷_
+data Env : ∀ {n} → Ctx n → Set where
+  []  : Env []
+  _∷_ : ∀ {n} {Γ : Ctx n} {τ} → ⟦ τ ⟧ → Env Γ → Env (τ ∷ Γ)
+
+lookupEnv : ∀ {n} {Γ : Ctx n} (m : Fin n) → Env Γ → ⟦ lookup Γ m ⟧
+lookupEnv zero    (x ∷ _)   = x
+lookupEnv (suc n) (_ ∷ env) = lookupEnv n env
+
+-- this is the evaluate function. Extremely funny that the blog just called it _[_]. 
+_[_] : ∀ {n} {Γ : Ctx n} {τ} → Env Γ → Term Γ τ → ⟦ τ ⟧
+env [ var v refl ] = lookupEnv v env
+env [ lit n      ] = n
+env [ t ⊕ u     ] = env [ t ] + env [ u ]
+env [ t ∙ u      ] = (env [ t ]) (env [ u ])
+env [ lam t      ] = λ x → (x ∷ env) [ t ] 
+
+
+-- the below is less interesting (for now) but I'll include it since its in the blog
+record Optimised {n} {Γ : Ctx n} {σ} (t : Term Γ σ) : Set where
+  constructor opt
+  field
+    optimised : Term Γ σ
+    sound     : ∀ {env} → env [ t ] ≡ env [ optimised ]
+
+postulate ext : ∀ {A B : Set} {f g : A → B} → ({x : A} → f x ≡ g x) → f ≡ g
+cfold : ∀ {n} {Γ : Ctx n} {τ} (t : Term Γ τ) → Optimised t
+cfold (var v p) = opt (var v p) refl
+cfold (lit x)   = opt (lit x)   refl
+cfold (t ∙ u) with cfold t | cfold u
+... | opt t′ p | opt u′ q = opt (t′ ∙ u′) (cong₂ _$_ p q)
+cfold (lam t) with cfold t
+... | opt t′ p = opt (lam t′) (ext p)
+cfold (t ⊕ u) with cfold t | cfold u
+... | opt (lit n) p | opt (lit m) q = opt (lit (n + m)) (cong₂ _+_ p q)
+... | opt t′      p | opt u′      q = opt (t′ ⊕ u′) (cong₂ _+_ p q)
