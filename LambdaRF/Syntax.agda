@@ -6,6 +6,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.Vec using (Vec; []; _∷_; lookup)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
+
+-- simple keystone types
 data Kind : Set where
   Star : Kind
   B    : Kind
@@ -14,11 +16,22 @@ data Base : Set where
   Bool : Base 
   Int  : Base
   
-infixr 30 _v⇒_
-infixr 30 _t⇒_
--- forward decleration to make Agda happy... 
+-- forward decleration of recursive types Agda happy... 
 data Type      : Set 
 data Predicate : Base → Set 
+-- Should be changed when implementing polymorphism
+TCtx : ℕ → Set
+TCtx = Vec Type
+
+KCtx : ℕ → Set
+KCtx = Vec Kind
+data Term {n m} (Π : KCtx n) (Γ : TCtx m)  : Type → Set
+Closed : Type → Set
+Closed = Term [] []
+
+-- actual definitions
+infixr 30 _v⇒_
+infixr 30 _t⇒_
 data Type where
   Refine : (b : Base) → Predicate b → Type
   _v⇒_   : Type → Type → Type -- there has to be a better way than this...
@@ -26,30 +39,11 @@ data Type where
   ∃      : Type → Type → Type
   Lift   : (b : Base) → Type
   -- ∀      : Kind → Type → Type 
-  
--- Should be changed when implementing polymorphism
-TCtx : ℕ → Set
-TCtx = Vec Type
-
-KCtx : ℕ → Set
-KCtx = Vec Kind
-  
-data Term {n m} (Π : KCtx n) (Γ : TCtx m)  : Type → Set
-Closed : Type → Set
-Closed = Term [] []
 
 data Predicate  where 
   Empty : { t : Base } → Predicate t 
   And   : { t : Base } → (Closed ( (Lift t) v⇒ Lift Bool)) → Predicate t → Predicate t 
 
-data Syntax : Set where
-  Var  : ℕ     → Syntax
-  Lam  : {-- Type → --} Syntax → Syntax
-  App  : Syntax → Syntax → Syntax
-  Let  : Syntax → Syntax → Syntax
-  TLam : Kind → {-- Type → --}  Syntax → Syntax
-  TApp : Syntax → Type → Syntax
-  Annot : Syntax → Type → Syntax
   
 data Term {n m} Π Γ where
   Nat   : ℕ → Term Π Γ (Refine Int Empty)
