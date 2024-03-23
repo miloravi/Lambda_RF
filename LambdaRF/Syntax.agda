@@ -47,11 +47,10 @@ data Predicate  where
 
 
 infixr 30 _⪯_
+{-# NO_POSITIVITY_CHECK #-}
 data _⪯_ : Type → Type → Set where 
--- | coercion definition of subtyping
--- subtype : ∀ {t t'} → (f : Type → Type) → f t ≡ t' → t ⪯ t' 
--- ^ alas, the positivity checker gets mad at me for this one :pensive:
-  eq      : ∀ {t} → t ⪯ t
+  subtype : ∀ {t t' } → 
+    (f : ∀ {n m : ℕ}  {Π : KCtx n} {Γ : TCtx m} → (Term Π Γ t) → (Term Π Γ t')) → t ⪯ t'
 
 data Term {n m} Π Γ where
   Nat   : ℕ → Term Π Γ (Refine Int Empty)
