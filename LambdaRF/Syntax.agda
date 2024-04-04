@@ -56,26 +56,47 @@ data Predicate  where
 Lift b = Refine b Empty
 
 infixr 30 _⪯_
-{-# NO_POSITIVITY_CHECK #-}
 data _⪯_ : Type → Type → Set where 
-  subtype : ∀ {t t' } → ⟦ t ⟧ -> ⟦ t' ⟧ -> t ⪯ t'
+  subtype : ∀ {t t' } → (⟦ t ⟧ -> ⟦ t' ⟧) -> t ⪯ t'
 
 data Term {n} Γ where
   Nat  : ℕ → {p : Predicate Int} → Term Γ (Refine Int p)
   Bool : Boolean → {p : Predicate Bool} → Term Γ (Refine Bool p)
   Var   : ∀ {t}  (v : Fin n) → t ≡ lookup Γ v → Term Γ t
   Lam   : ∀ {a b} → Term (a ∷ Γ) b     → Term Γ (a ⇒ b)
-  App   : ∀ {a a' b} → a ⪯ a' → Term Γ (a' ⇒ b) → Term Γ a → Term Γ b
+  App   : ∀ {a a' b : Type} → a ⪯ a' → Term Γ (a' ⇒ b) → Term Γ a → Term Γ b
   Let   : ∀ {a b} → Term Γ a  → Term (a ∷ Γ) b → Term Γ b
   _==_  : ∀ {t} → Term Γ ((Lift t) ⇒ (Lift t) ⇒ Lift Bool)
-  _≥_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Bool)
-  _>_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Bool)
-  _≤_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Bool)
-  _<_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Bool)
-  _+_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Int)
-  _-_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Int)
-  _*_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Int)
-  _/_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Int)
-  _||_  : Term Γ ((Lift Bool) ⇒ (Lift Bool) ⇒ Lift Bool)
-  _&&_  : Term Γ ((Lift Bool) ⇒ (Lift Bool) ⇒ Lift Bool)
+  _≥_   : Term Γ (Lift Int  ⇒ (Lift Int ⇒ Lift Bool))
+  _>_   : Term Γ (Lift Int  ⇒ (Lift Int ⇒ Lift Bool))
+  _≤_   : Term Γ (Lift Int  ⇒ (Lift Int ⇒ Lift Bool))
+  _<_   : Term Γ (Lift Int  ⇒ (Lift Int ⇒ Lift Bool))
+  _+_   : Term Γ (Lift Int  ⇒ (Lift Int ⇒ Lift Int))
+  _-_   : Term Γ (Lift Int  ⇒ (Lift Int ⇒ Lift Int))
+  _*_   : Term Γ (Lift Int  ⇒ (Lift Int ⇒ Lift Int))
+  _/_   : Term Γ (Lift Int  ⇒ (Lift Int ⇒ Lift Int))
+  _||_  : Term Γ (Lift Bool ⇒ (Lift Bool ⇒ Lift Bool))
+  _&&_  : Term Γ (Lift Bool ⇒ (Lift Bool ⇒ Lift Bool))
  
+
+greaterThan100 : Term []
+  (Refine Int 
+    (And 
+      (App (subtype \x -> x) (_<_) (Nat 100 {Empty})) 
+      (Empty)
+    )
+  )
+greaterThan100 = Nat 101
+
+
+bounded : Term []
+  (Refine Int 
+    (And 
+      (App (subtype \x -> x) (_<_) (Nat 100 {Empty})) 
+      (And (App (subtype \x -> x) (_>_) (Nat 200 {Empty})) 
+           (Empty))
+    )
+  )
+bounded = Nat 101
+
+
