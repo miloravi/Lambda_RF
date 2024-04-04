@@ -41,6 +41,14 @@ data Type where
   Forall : Kind → Type        → Type
   Lift   : Base               → Type
 
+⟦_⟧ : Type → Set
+⟦ Refine b p  ⟧ = ℕ
+⟦ Lift  b    ⟧  = ℕ
+⟦ σ v⇒ τ ⟧     = ⟦ σ ⟧ → ⟦ τ ⟧
+⟦ σ t⇒ τ ⟧     = forall a → ⟦ τ ⟧ -- really this and forall need to be Set -> t, but whatever. Can't get that to typecheck for now. 
+⟦ ∃ a x ⟧      = ℕ -- I don't know what you become...
+⟦ Forall a x ⟧ = forall a → ⟦ x ⟧
+
 data Predicate  where 
   Empty : { t : Base } → Predicate t 
   And   : { t : Base } → (Closed ( (Lift t) v⇒ Lift Bool)) → Predicate t → Predicate t 
@@ -49,8 +57,7 @@ data Predicate  where
 infixr 30 _⪯_
 {-# NO_POSITIVITY_CHECK #-}
 data _⪯_ : Type → Type → Set where 
-  subtype : ∀ {t t' } → 
-    (f : ∀ {n m : ℕ}  {Π : KCtx n} {Γ : TCtx m} → (Term Π Γ t) → (Term Π Γ t')) → t ⪯ t'
+  subtype : ∀ {t t' } → ⟦ t ⟧ -> ⟦ t ⟧ -> t ⪯ t'
 
 data Term {n m} Π Γ where
   Nat   : ℕ → Term Π Γ (Refine Int Empty)
