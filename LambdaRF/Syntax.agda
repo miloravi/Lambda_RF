@@ -1,10 +1,11 @@
 module Syntax where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤?_; _≥_)
+open import Data.Nat using (ℕ; zero; suc)
 open import Data.Fin using (Fin; zero; suc; toℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 open import Data.Vec using (Vec; []; _∷_; lookup)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Bool using (true; false) renaming (Bool to Boolean)
 
 
 -- simple keystone types
@@ -15,56 +16,65 @@ data Kind : Set where
 data Base : Set where 
   Bool    : Base 
   Int     : Base
-  α       : Base
   
 -- forward decleration of recursive types to make Agda happy... 
 data Type      : Set 
 data Predicate : Base → Set 
 -- Should be changed when implementing polymorphism
-TCtx : ℕ → Set
-TCtx = Vec Type
+-- KCtx : ℕ → Set
+-- KCtx = Vec Kind
 
-KCtx : ℕ → Set
-KCtx = Vec Kind
-data Term {n m} (Π : KCtx n) (Γ : TCtx m)  : Type → Set
+Ctx : ℕ → Set
+Ctx = Vec Type
+
+data Term {n} (Γ : Ctx n) : Type → Set
 Closed : Type → Set
-Closed = Term [] []
+Closed = Term []
 
 -- actual definitions
-infixr 30 _v⇒_
-infixr 30 _t⇒_
+infixr 30 _⇒_
 data Type where
   Refine : (b : Base) → Predicate b → Type
-  _v⇒_  : Type → Type        → Type 
-  _t⇒_  : Kind → Type        → Type 
-  ∃      : Type → Type        → Type
-  Forall : Kind → Type        → Type
+  _⇒_  : Type → Type        → Type 
   Lift   : Base               → Type
+-- ∃      : Type → Type        → Type
 
 ⟦_⟧ : Type → Set
-⟦ Refine b p  ⟧ = ℕ
-⟦ Lift  b    ⟧  = ℕ
-⟦ σ v⇒ τ ⟧     = ⟦ σ ⟧ → ⟦ τ ⟧
-⟦ σ t⇒ τ ⟧     = forall a → ⟦ τ ⟧ -- really this and forall need to be Set -> t, but whatever. Can't get that to typecheck for now. 
-⟦ ∃ a x ⟧      = ℕ -- I don't know what you become...
-⟦ Forall a x ⟧ = forall a → ⟦ x ⟧
+⟦ Refine Int p  ⟧  = ℕ        
+⟦ Refine Bool p ⟧  = Boolean  
+-- ^ might want to represent this as (type, predicate) instead
+-- ^ since right now you can define a (Refine Int (<8)) ⪯ Refine Int (>8), which seems... incorrect.
+⟦ Lift  Int     ⟧  = ℕ
+⟦ Lift  Bool    ⟧  = Boolean
+⟦ σ ⇒ τ ⟧         = ⟦ σ ⟧ → ⟦ τ ⟧
+-- ⟦ ∃ a x ⟧      = ℕ -- I don't know what you become...
 
 data Predicate  where 
   Empty : { t : Base } → Predicate t 
-  And   : { t : Base } → (Closed ( (Lift t) v⇒ Lift Bool)) → Predicate t → Predicate t 
-
+  And   : { t : Base } → (Closed ( (Lift t) ⇒ Lift Bool)) → Predicate t → Predicate t
 
 infixr 30 _⪯_
 {-# NO_POSITIVITY_CHECK #-}
 data _⪯_ : Type → Type → Set where 
-  subtype : ∀ {t t' } → ⟦ t ⟧ -> ⟦ t ⟧ -> t ⪯ t'
+  subtype : ∀ {t t' } → ⟦ t ⟧ -> ⟦ t' ⟧ -> t ⪯ t'
 
-data Term {n m} Π Γ where
-  Nat   : ℕ → Term Π Γ (Refine Int Empty)
-  Bool  : ℕ → Term Π Γ (Refine Bool Empty)
-  Var   : ∀ {t}  (v : Fin m) → t ≡ lookup Γ v → Term Π Γ t
-  Lam   : ∀ {a b} → Term Π (a ∷ Γ) b     → Term Π Γ (a v⇒ b)
-  TLam  : ∀ {a k} → Term (k ∷ Π) Γ a     → Term Π Γ (k t⇒ a)
-  App   : ∀ {a a' b} → a ⪯ a' → Term Π Γ (a' v⇒ b) → Term Π Γ a → Term Π Γ b
-  TApp  : ∀ {a k} → Term Π Γ (k t⇒ a) → (t : Type) → Term Π Γ a    
-  Let   : ∀ {a b} → Term Π Γ a  → Term Π (a ∷ Γ) b → Term Π Γ b  
+data Term {n} Γ where
+  Nat   : ℕ → Term Γ (Lift Int)
+  NatR  : ℕ → {p : Predicate Int} → Term Γ (Refine Int p)
+  Bool  : Boolean → Term Γ (Lift Bool)
+  BoolR : Boolean → {p : Predicate Bool} → Term Γ (Refine Bool p)
+  Var   : ∀ {t}  (v : Fin n) → t ≡ lookup Γ v → Term Γ t
+  Lam   : ∀ {a b} → Term (a ∷ Γ) b     → Term Γ (a ⇒ b)
+  App   : ∀ {a a' b} → a ⪯ a' → Term Γ (a' ⇒ b) → Term Γ a → Term Γ b
+  Let   : ∀ {a b} → Term Γ a  → Term (a ∷ Γ) b → Term Γ b
+  _==_  : ∀ {t} → Term Γ ((Lift t) ⇒ (Lift t) ⇒ Lift Bool)
+  _≥_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Bool)
+  _>_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Bool)
+  _≤_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Bool)
+  _<_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Bool)
+  _+_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Int)
+  _-_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Int)
+  _*_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Int)
+  _/_   : Term Γ ((Lift Int) ⇒ (Lift Int) ⇒ Lift Int)
+  _||_  : Term Γ ((Lift Bool) ⇒ (Lift Bool) ⇒ Lift Bool)
+  _&&_  : Term Γ ((Lift Bool) ⇒ (Lift Bool) ⇒ Lift Bool)
